@@ -1,24 +1,13 @@
-/* 2stage v0.2
+/* twostage v0.2
  * ---
  * Zachary Hamm
  * zsh@imipolexg.org 
  *
- * I often have to ssh into systems from untrusted public computers. The 
- * possibility of keyloggers makes me nervous (I'm the paranoid sort). I could
- * use an ssh key on a usb drive or somesuch but that's often not an option,
- * (plus, it's a nuisance to carry a precious usb drive around when I've got
- * my passwords all stored up in my noggin). So I use password authentication.
- * 
- * I was inspired by Google's two-stage auth. It gives me the confidence to
- * read my email at a public computer. I made this so I could have the same 
- * confidence when ssh'ing into my servers.
- * 
- * TODO: * Make it configurable by each user via a dotfile in the home dir.
+ * TODO: 
  *       * Option to remember trusted hosts for 30 days so you don't
  * 		have to do this over and over from your main boxen.
  *       * Add logging of failed passcode attempts. 
- * 	 * Does this break X11 forwarding? Must test.
- *	 * Once all that is done, give it a proper autoconf and git host
+ * 	 * Does this break X11 forwarding? Must test. SCP?
  */
 
 #include <stdio.h>
@@ -166,18 +155,46 @@ int check_input(void)
 	return 0;
 }
 
-#define CFG_DIR ".2stage"
-#define CFG_FN "2stage.cfg"
+#define CFG_DIR ".twostage"
+#define CFG_FN "twostage.cfg"
 #define CFG_ENTRIES 4
 
-config_t *get_config(void)
+#define LEN 1024
+
+char *read_cfg_line(FILE *cfg_fp)
 {
-	config_t *cfg;
-	int fd;
-	FILE *cfg_file;
-	size_t cfg_path_sz, line_sz;
-	char *cfg_path, *home, *cfg_line;
-	char *cfg_entries[CFG_ENTRIES+1];
+	char *line = (char *)malloc(len);
+	size_t sz;
+
+	if(!line) return NULL;
+
+	sz = LEN;
+
+	if(getline(&line, &sz, cfg_fp) == -1)
+	{
+		free(line);
+		return NULL;
+	}
+
+	if(line[strlen(line)-1] == '\n')
+		line[strlen(line)-1] = 0;
+
+	return line;
+}
+
+#define FROM 0
+#define TO 1
+#define SMTP 2
+#define SHELL 3
+#define CFG_SZ 4
+
+char **get_config(void)
+{
+	FILE *cfg_fp;
+	size_t cfg_path_sz;
+	char *cfg_path, *home;
+	char **cfg;
+	int fd, i;
 
 	if((home = getenv("HOME")) == NULL)
 		return NULL;
@@ -199,54 +216,28 @@ config_t *get_config(void)
 	}
 	free(cfg_path);
 
-	cfg_file = fdopen(fd, "r");
+	cfg_fp = fdopen(fd, "r");
 	cfg_line = NULL;
-
-	cfg = (config_t *) malloc(sizeof(config_t));
-			
+	
 
 	/* The config file is just four simple lines. */
 	/* We trust that you didn't fuck it up */
+	cfg = (char **) malloc(sizeof(char *) * CFG_SZ);
+	if(!cfg) return NULL;
 
-	/* the from line */
-#define ERASE_NL(x) if(x[strlen(x)-1] == '\n') x[strlen(x)-1] = 0
-#define LEN 1024
-	
-	cfg_line = (char *)malloc(LEN);
-	line_sz = LEN;
-	if(getline(&cfg_line, &line_sz, cfg_file) == -1)
-		goto abort;
-	ERASE_NL(cfg_line);
-	cfg->from = cfg_line;
-
-	/* the to line */
-	cfg_line = (char *)malloc(LEN);
-	line_sz = LEN;
-	if(getline(&cfg_line, &line_sz, cfg_file) == -1)
+	for(i = 0; i < CFG_SZ ; i++)
 	{
-		free(cfg->from);
-		goto abort;
-	} 
-	ERASE_NL(cfg_line);
-	cfg->to = cfg_line;
+		if((cfg[i] = read_cfg_line(cfg_fp)) == NULL)
+		{
+			int j;
+			for(j = 0 ; j < i ; j++)
+				free(cfg[j]);
+		
+			return NULL;
+		}
+	}
 	
-	/* the shell line */
-	cfg_line = (char *)malloc(LEN);
-	line_sz = LEN;
-	if(getline(&cfg_line, &line_sz, cfg_file) == -1)
-	{
-		free(cfg->from);
-		free(cfg->to);
-		goto abort;
-	}	
-	ERASE_NL(cfg_line);
-	cfg->shell = cfg_line;
-
 	return cfg;
-	
-abort:
-	free(cfg);
-	return NULL;
 }
 
 /* Make sure the shell in the user cfg dir is a valid login shell */
@@ -350,7 +341,8 @@ int main(int argc, char *argv[])
 			printf("Try again: ");
 	}
 
-	ask_about_dre();
+
+	/* TODO: Add client-trust question here */
 
 drop_to_shell:
 
