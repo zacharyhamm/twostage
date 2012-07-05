@@ -26,21 +26,22 @@
 #define MSG "From: %s\r\nTo: %s\r\n\r\nYour two-stage passcode is %d\r\n"
 #define DEFAULT_SHELL "/bin/sh"
 
-typedef struct config_s	
-{
-	char *from;
-	char *to;
-	char *shell;
-} config_t;
+/* cfg indices */
+#define FROM 0
+#define TO 1
+#define SMTP 2
+#define SHELL 3
+#define CFG_SZ 4
 
 int executeur(char *shell, int argc, char **argv);
 unsigned int stupid_random(void);
 size_t mailbody(void *ptr, size_t size, size_t nitems, void *strm);
 int send_passcode(void);
-config_t *get_config(void);
+char *read_cfg_line(FILE *cfg_fp);
+char **get_config(void);
 
 /* crazy globals, trix are for kids */
-static config_t *conf;
+static char **conf;
 static unsigned int passcode;
 
 int executeur(char *shell, int argcount, char **argvee)
@@ -90,10 +91,10 @@ size_t mailbody(void *ptr, size_t size, size_t nitems, void *strm)
 	{
 		/* 7 is the digit length of the ints from stupid_random() 
 		   XXX: we assume malloc succeeds. this is sloppy. */
-		s = (char *) malloc(strlen(MSG) + strlen(conf->from) + 
-					strlen(conf->to) + 7 + 1);
+		s = (char *) malloc(strlen(MSG) + strlen(conf[FROM]) + 
+					strlen(conf[TO]) + 7 + 1);
 		passcode = stupid_random();
-		sprintf(s, MSG, conf->from, conf->to, passcode);
+		sprintf(s, MSG, conf[FROM], conf[TO], passcode);
 		len = strlen(s);
 		memcpy(ptr, s, len);
 		dirty = 1;
@@ -110,6 +111,7 @@ int send_passcode(void)
 	CURL *curl;
 	CURLcode res;
 	struct curl_slist *targets = NULL;
+	char *smtp;
 	
 	curl = curl_easy_init();
 	if (!curl) {
@@ -117,18 +119,29 @@ int send_passcode(void)
 		return -1;
 	}
 
-/*	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1); */
+	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
 
-	curl_easy_setopt(curl, CURLOPT_URL, "smtp://localhost");
-	targets = curl_slist_append(targets, conf->to);
+	smtp = (char *)malloc(strlen("smtp://") + strlen(conf[SMTP]) + 1);
+	if(!smtp)
+	{	
+		curl_easy_cleanup(curl);
+		return -1;
+	}
+
+	snprintf(smtp, strlen("smtp://") + strlen(conf[SMTP]) + 1,
+			"smtp://%s", conf[SMTP]);
+	printf("%s\n", smtp);
+	curl_easy_setopt(curl, CURLOPT_URL, smtp);
+	targets = curl_slist_append(targets, conf[TO]);
 	curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, targets);
-	curl_easy_setopt(curl, CURLOPT_MAIL_FROM, conf->from);
+	curl_easy_setopt(curl, CURLOPT_MAIL_FROM, conf[FROM]);
 	curl_easy_setopt(curl, CURLOPT_READFUNCTION, mailbody);
 	
 	res = curl_easy_perform(curl);
 	if(res != 0) 
 	{
 		printf("Something bad happened!\n");
+		curl_easy_cleanup(curl);
 		return -1;
 	}
 
@@ -163,7 +176,7 @@ int check_input(void)
 
 char *read_cfg_line(FILE *cfg_fp)
 {
-	char *line = (char *)malloc(len);
+	char *line = (char *)malloc(LEN);
 	size_t sz;
 
 	if(!line) return NULL;
@@ -182,11 +195,6 @@ char *read_cfg_line(FILE *cfg_fp)
 	return line;
 }
 
-#define FROM 0
-#define TO 1
-#define SMTP 2
-#define SHELL 3
-#define CFG_SZ 4
 
 char **get_config(void)
 {
@@ -234,6 +242,11 @@ char **get_config(void)
 			return NULL;
 		}
 	}
+
+	printf("%s\n", cfg[FROM]);
+	printf("%s\n", cfg[TO]);
+	printf("%s\n", cfg[SMTP]);
+	printf("%s\n", cfg[SHELL]);
 	
 	return cfg;
 }
@@ -283,8 +296,13 @@ int is_client_trusted(void)
 	ip = get_client();
 	if(!ip)
 		return 0;
+
+	/* implement! */
+
+	return 0;
 }
 
+/*
 void ask_about_client(void)
 {	
 	char *client;
@@ -302,6 +320,7 @@ void ask_about_client(void)
 
 	if(input[0] == 'y' || input[0] == 'Y')			
 }
+*/
 
 int main(int argc, char *argv[])
 {
@@ -313,6 +332,7 @@ int main(int argc, char *argv[])
 		perror("get_config");
 		return -1;
 	}
+	printf("%s\n", conf[SMTP]);
 
 	if(is_client_trusted())
 		goto drop_to_shell;
@@ -320,7 +340,7 @@ int main(int argc, char *argv[])
 	printf("2stage! Sending the passcode to your phone.\n");
 	if(send_passcode() != 0)
 	{
-		printf("Oh no! Badness! Try again or contact the admin...");
+		printf("Oh no! Badness! Try again or contact the admin...\n");
 		return -1;
 	}	
 
@@ -344,8 +364,8 @@ int main(int argc, char *argv[])
 
 drop_to_shell:
 
-	if(check_shell(conf->shell))
-		shell = conf->shell;
+	if(check_shell(conf[SHELL]))
+		shell = conf[SHELL];
 	else
 		shell = DEFAULT_SHELL;
 
