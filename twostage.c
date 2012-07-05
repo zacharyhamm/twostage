@@ -336,7 +336,6 @@ int main(int argc, char *argv[])
 		perror("get_config");
 		printf("twostage seems unconfigured! dropping to shell.\n");
 		goto drop_to_shell;
-		return -1;
 	}
 
 	if(remote_is_trusted())
