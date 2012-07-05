@@ -119,7 +119,9 @@ int send_passcode(void)
 		return -1;
 	}
 
+#ifdef DEBUG
 	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
+#endif /* DEBUG */
 
 	smtp = (char *)malloc(strlen("smtp://") + strlen(conf[SMTP]) + 1);
 	if(!smtp)
@@ -130,7 +132,6 @@ int send_passcode(void)
 
 	snprintf(smtp, strlen("smtp://") + strlen(conf[SMTP]) + 1,
 			"smtp://%s", conf[SMTP]);
-	printf("%s\n", smtp);
 	curl_easy_setopt(curl, CURLOPT_URL, smtp);
 	targets = curl_slist_append(targets, conf[TO]);
 	curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, targets);
@@ -243,10 +244,12 @@ char **get_config(void)
 		}
 	}
 
+#ifdef DEBUG
 	printf("%s\n", cfg[FROM]);
 	printf("%s\n", cfg[TO]);
 	printf("%s\n", cfg[SMTP]);
 	printf("%s\n", cfg[SHELL]);
+#endif /* DEBUG */
 	
 	return cfg;
 }
@@ -289,7 +292,7 @@ char *get_client(void)
 	return client;
 }
 
-int is_client_trusted(void)
+int remote_is_trusted(void)
 {
 	char *ip;
 
@@ -327,17 +330,19 @@ int main(int argc, char *argv[])
 	int tries;
 	char *shell;
 
+	conf = NULL;
 	if((conf = get_config()) == NULL)
 	{
 		perror("get_config");
+		printf("twostage seems unconfigured! dropping to shell.\n");
+		goto drop_to_shell;
 		return -1;
 	}
-	printf("%s\n", conf[SMTP]);
 
-	if(is_client_trusted())
+	if(remote_is_trusted())
 		goto drop_to_shell;
 	
-	printf("2stage! Sending the passcode to your phone.\n");
+	printf("(two-stage) Sending the passcode to your phone.\n");
 	if(send_passcode() != 0)
 	{
 		printf("Oh no! Badness! Try again or contact the admin...\n");
@@ -364,7 +369,7 @@ int main(int argc, char *argv[])
 
 drop_to_shell:
 
-	if(check_shell(conf[SHELL]))
+	if(conf && check_shell(conf[SHELL]))
 		shell = conf[SHELL];
 	else
 		shell = DEFAULT_SHELL;
