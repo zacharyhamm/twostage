@@ -217,8 +217,6 @@ char **get_config(void)
 	free(cfg_path);
 
 	cfg_fp = fdopen(fd, "r");
-	cfg_line = NULL;
-	
 
 	/* The config file is just four simple lines. */
 	/* We trust that you didn't fuck it up */
