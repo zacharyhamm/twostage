@@ -89,10 +89,12 @@ size_t mailbody(void *ptr, size_t size, size_t nitems, void *strm)
 
 	if(!dirty)
 	{
-		/* 7 is the digit length of the ints from stupid_random() 
-		   XXX: we assume malloc succeeds. this is sloppy. */
+		/* 7 is the digit length of the ints from stupid_random() */ 
 		s = (char *) malloc(strlen(MSG) + strlen(conf[FROM]) + 
 					strlen(conf[TO]) + 7 + 1);
+		if(!s)
+			return -1;
+
 		passcode = stupid_random();
 		sprintf(s, MSG, conf[FROM], conf[TO], passcode);
 		len = strlen(s);
