@@ -72,7 +72,10 @@ char *get_client(void)
 	static char *client = NULL;
 
 	if(client)
+	{
+		printf("client: %s\n", client);
 		return client;
+	}
 
 	client_env = getenv("SSH_CLIENT");
 	if(!client_env)
@@ -80,6 +83,7 @@ char *get_client(void)
 	client = (char *)malloc(strlen(client_env)+1);
 	if(!client)
 		return NULL;
+	strcpy(client, client_env);
 
 	/* XXX: should we do more input verification? to make sure we 
 		really get an IP address here? */
