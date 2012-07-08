@@ -20,8 +20,9 @@
 #include <dirent.h>
 #include <errno.h>
 #include <limits.h>
-#include <db.h>
 #include <curl/curl.h>
+
+#include "trust.h"
 
 #define MSG "From: %s\r\nTo: %s\r\n\r\nYour two-stage passcode is %d\r\n"
 #define DEFAULT_SHELL "/bin/sh"
@@ -32,6 +33,14 @@
 #define SMTP 2
 #define SHELL 3
 #define CFG_SZ 4
+
+#define CFG_DIR ".twostage"
+#define CFG_FN "twostage.cfg"
+#define CFG_ENTRIES 4
+
+#define TRUST_STORE "trust"
+
+#define LEN 1024
 
 int executeur(char *shell, int argc, char **argv);
 unsigned int stupid_random(void);
@@ -171,11 +180,6 @@ int check_input(void)
 	return 0;
 }
 
-#define CFG_DIR ".twostage"
-#define CFG_FN "twostage.cfg"
-#define CFG_ENTRIES 4
-
-#define LEN 1024
 
 char *read_cfg_line(FILE *cfg_fp)
 {
@@ -279,58 +283,47 @@ int check_shell(char *shell)
 
 #define TRIES_MAX 3
 
-char *get_client(void)
-{
-	char *client;
-
-	client = getenv("SSH_CLIENT");
-	if(!client)
-		return NULL;
-
-	/* XXX: should we do more input verification? to make sure we 
-		really get an IP address here? */
-	strtok(client, " ");
-
-	return client;
-}
-
-int remote_is_trusted(void)
-{
-	char *ip;
-
-	ip = get_client();
-	if(!ip)
-		return 0;
-
-	/* implement! */
-
-	return 0;
-}
-
-/*
-void ask_about_client(void)
+int we_should_trust(void)
 {	
 	char *client;
 	char input[INPUT_MAX];
 
-	client = getenv("SSH_CLIENT");
+	client = get_client();
 	if(!client)
-		return;
+		return 0;
 
-	strtok(client, " ");
-	printf("Would you like to trust %s for 15 days? [y/N] ");
+	printf("Would you like to trust %s for 15 days? [y/N] ", client);
 
 	if(fgets(input, INPUT_MAX, stdin) == NULL)
-		return;
+		return 0;
 
 	if(input[0] == 'y' || input[0] == 'Y')			
+		return 1;
+	else
+		return 0;
 }
-*/
+
+trust_t *get_trusty()
+{
+		char *path;
+
+#define TRTLN strlen(getenv("HOME"))+1+strlen(CFG_DIR)+1+strlen(TRUST_STORE)+1
+
+		path = (char *)malloc(TRTLN);
+		if(!path)
+			return NULL;
+
+		snprintf(path, TRTLN, "%s/%s/%s", getenv("HOME"), CFG_DIR,
+				TRUST_STORE);	
+		printf("%s\n", path);
+		return open_trust_store(path);
+}
 
 int main(int argc, char *argv[])
 {
 	int tries;
 	char *shell;
+	trust_t *trust = NULL;
 
 	conf = NULL;
 	if((conf = get_config()) == NULL)
@@ -340,7 +333,8 @@ int main(int argc, char *argv[])
 		goto drop_to_shell;
 	}
 
-	if(remote_is_trusted())
+	trust = get_trusty();
+	if(is_client_trusted(trust, get_client()) == 1)
 		goto drop_to_shell;
 	
 	printf("(two-stage) Sending the passcode to your phone.\n");
@@ -365,10 +359,16 @@ int main(int argc, char *argv[])
 			printf("Try again: ");
 	}
 
-
-	/* TODO: Add client-trust question here */
+	if(we_should_trust())
+	{
+		if(trust_it(trust, get_client(), 60) == -1)
+			perror("trust_it"); /* this is bad, but not fatal */
+	}
 
 drop_to_shell:
+
+	if(trust)
+		close_trust_store(trust);
 
 	if(conf && check_shell(conf[SHELL]))
 		shell = conf[SHELL];
