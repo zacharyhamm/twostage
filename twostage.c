@@ -90,8 +90,10 @@ int send_passcode(config_t *cfg, unsigned int passcode)
 		char *s;
 		size_t sz;
 		int status;
-	
-		close(pipe_fds[0]); /* close read end */
+
+		/* close read end */
+		if(close(pipe_fds[0]) == -1)
+			return -1; 
 	
 		/* -2, to erase %d, +7 for the passcode, +1 for \0 */	
 		s = (char *) malloc(strlen(MSG)-2+7+1);
@@ -99,18 +101,23 @@ int send_passcode(config_t *cfg, unsigned int passcode)
 			return -1;
 
 		snprintf(s, strlen(MSG)-2+7+1, MSG, passcode);
+		s[strlen(s)] = 0;
 	
 		/* MSG is so small that the write should almost alway 
                  * succeed unless something really bad is going on */	
-		sz = strlen(s);
+		sz = strlen(s)+1;
 		if (write(pipe_fds[1], s, sz) != sz)
 		{
 			free(s);
 			return -1;	
 		}
+
 		/* we're done, close write end */
-		close(pipe_fds[1]); 
-		free(s);
+		if(close(pipe_fds[1]) == -1) 
+		{
+			free(s);
+			return -1;
+		}
 
 		if(waitpid(pid, &status, 0) == -1)
 			return -1;
@@ -124,6 +131,10 @@ int send_passcode(config_t *cfg, unsigned int passcode)
 	else /* quand j'étais un petit enfant */ 
 	{
 		char *mail, *argv0;
+
+		/* close write end */
+		if(close(pipe_fds[1]) == -1)
+			exit(-1);
 		
 		/* are there cooler ways to do this on new unices?
          * E.g., linux? FreeBSD? */
@@ -131,7 +142,8 @@ int send_passcode(config_t *cfg, unsigned int passcode)
 		{
 			if(dup2(pipe_fds[0], STDINFD) != STDINFD)
 				exit(-1);
-			close(pipe_fds[0]);
+			if(close(pipe_fds[0]) == -1)
+				exit(-1);
 		}
 
 		mail = (char *)malloc(strlen(cfg_entry(cfg, MAIL))+1);
@@ -144,8 +156,10 @@ int send_passcode(config_t *cfg, unsigned int passcode)
 		else
 			argv0 = mail;
 		
-		if(execl(mail, argv0, "-s", "\"\"", cfg_entry(cfg, TO), 
+/*		if(execl(mail, argv0, "-s", "\"\"", cfg_entry(cfg, TO), 
 			(char *)0) == -1)
+*/
+		if(execl(mail, argv0, (char *)0) == -1)
 		{
 			exit(-1);
 		}
@@ -206,8 +220,13 @@ int we_should_trust(void)
 	if(!client)
 		return 0;
 
-	printf("Would you like to trust %s for 15 days? [y/N] ", client);
-	printf("Don't do so if you don't trust the host!\nDoing so will make scp and other good things possible.\n");
+	printf("\n\n");
+	printf("If you trust this host, you can store it for a period of time.\n");
+	printf("Doing so will bypass this twostage authentication.\n");
+	printf("This also makes scp and other things possible.\n");
+	printf("If you don't trust this host but need scp, store it now, then\n");
+	printf("delete the host from ~/.twostage/trust/ as soon as you're done\n");
+	printf("\nWould you like to trust %s for 15 days? [y/N] ", client);
 
 	if(fgets(input, INPUT_MAX, stdin) == NULL)
 		return 0;
@@ -278,9 +297,12 @@ int main(int argc, char *argv[])
 
 	if(we_should_trust())
 	{
+		printf("Trusting...\n");
 		if(trust_it(trust, get_client(), 15*24*60*60) == -1)
 			perror("trust_it"); /* this is bad, but not fatal */
 	}
+	else
+		printf("Not trusting...\n");
 
 drop_to_shell:
 	/* I suppose it's possible that this could fail... */
