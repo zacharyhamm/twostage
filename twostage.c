@@ -25,7 +25,7 @@
 #include "config.h"
 #include "trust.h"
 
-#define MSG "From: %s\r\nTo: %s\r\n\r\nYour two-stage passcode is %d\r\n"
+#define MSG "From: %s\r\nTo: %s\r\n\r\nYour twostage passcode is %d\r\n"
 #define DEFAULT_SHELL "/bin/sh"
 
 #define TRUST_STORE "trust"
@@ -248,7 +248,7 @@ int main(int argc, char *argv[])
 	if(is_client_trusted(trust, get_client()) == 1)
 		goto drop_to_shell;
 	
-	printf("(two-stage) Sending the passcode to your phone.\n");
+	printf("(twostage) Sending the passcode to your phone.\n");
 	if(send_passcode() != 0)
 	{
 		printf("Oh no! Badness! Try again or contact the admin...\n");
