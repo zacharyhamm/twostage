@@ -21,8 +21,6 @@ trust_t *open_trust_store(char *path)
 	trust_t *trust_store;
 	struct stat statbuf;
 
-	printf("%s\n", path);
-
 	if((fd = open(path, O_RDONLY, S_IRWXU)) == -1)
 	{	
 		if(errno != ENOENT)	
@@ -72,10 +70,7 @@ char *get_client(void)
 	static char *client = NULL;
 
 	if(client)
-	{
-		printf("client: %s\n", client);
 		return client;
-	}
 
 	client_env = getenv("SSH_CLIENT");
 	if(!client_env)
@@ -109,8 +104,6 @@ int trust_it(trust_t *trust_store, char *client, int ttl_seconds)
 	if(clock_gettime(CLOCK_REALTIME, &tspec) == -1)
 		return -1;
 
-	printf("%d + %ld = %ld\n", ttl_seconds, tspec.tv_sec,
-		 ttl_seconds+tspec.tv_sec);
 	if(snprintf(ttl_s, 512, "%ld", ttl_seconds+tspec.tv_sec) < 0)
 		return -1;
 
