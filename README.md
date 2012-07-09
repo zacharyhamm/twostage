@@ -28,3 +28,7 @@ Installation:
 (See twostage.cfg.example)
 7. Make `/bin/twostage` your default shell.
 8. And logout, log back in. 
+
+If you have any comments drop me a line at zsh AT imipolexg DOT org
+
+(GPG key coming soon)

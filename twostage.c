@@ -1,6 +1,4 @@
 /* twostage v0.2
- * ---
- * Zachary Hamm
  * zsh@imipolexg.org 
  *
  * TODO: 
