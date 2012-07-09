@@ -20,12 +20,13 @@
 #include <dirent.h>
 #include <errno.h>
 #include <limits.h>
-#include <curl/curl.h>
+#include <wait.h>
 
 #include "config.h"
 #include "trust.h"
 
-#define MSG "From: %s\r\nTo: %s\r\n\r\nYour twostage passcode is %d\r\n"
+//#define MSG "From: %s\r\nTo: %s\r\n\r\nYour twostage passcode is %d\r\n"
+#define MSG "Your twostage passcode is %d\n"
 #define DEFAULT_SHELL "/bin/sh"
 
 #define TRUST_STORE "trust"
@@ -34,15 +35,12 @@
 
 int executeur(char *shell, int argc, char **argv);
 unsigned int stupid_random(void);
-size_t mailbody(void *ptr, size_t size, size_t nitems, void *strm);
-int send_passcode(void);
+int send_passcode(config_t *cfg, unsigned int passcode);
 char *read_cfg_line(FILE *cfg_fp);
 char **get_config(void);
+int check_input(unsigned int passcode);
 
 /* crazy globals, trix are for kids */
-static char **conf;
-static unsigned int passcode;
-
 int executeur(char *shell, int argcount, char **argvee)
 {
 	char **args = (char **)malloc(sizeof(char *) * (argcount + 1));
@@ -79,83 +77,92 @@ unsigned int stupid_random(void)
 	return (unsigned int)randy;
 }
 
-/* Callback for CURLOPT_READFUNCTION */
-size_t mailbody(void *ptr, size_t size, size_t nitems, void *strm)
-{
-	static unsigned int dirty = 0;
-	char *s;
-	size_t len = 0;
+#define STDINFD fileno(stdin)
 
-	if(!dirty)
-	{
-		/* 7 is the digit length of the ints from stupid_random() */ 
-		s = (char *) malloc(strlen(MSG) + strlen(conf[FROM]) + 
-					strlen(conf[TO]) + 7 + 1);
+int send_passcode(config_t *cfg, unsigned int passcode)
+{
+	/* ye ole' pipe-and-fork-exec */
+	int pid;
+	int pipe_fds[2];
+
+	if(pipe(pipe_fds) == -1)
+		return -1;
+
+	if((pid = fork()) == -1)
+		return -1;
+	else if(pid > 0) /* la mère */
+	{ 
+		char *s;
+		size_t sz;
+		int status;
+	
+		close(pipe_fds[0]); /* close read end */
+	
+		/* -2, to erase %d, +7 for the passcode, +1 for \0 */	
+		s = (char *) malloc(strlen(MSG)-2+7+1);
 		if(!s)
 			return -1;
 
-		passcode = stupid_random();
-		sprintf(s, MSG, conf[FROM], conf[TO], passcode);
-		len = strlen(s);
-		memcpy(ptr, s, len);
-		dirty = 1;
+		snprintf(s, strlen(MSG)-2+7+1, MSG, passcode);
+	
+		/* MSG is so small that the write should almost alway 
+                 * succeed unless something really bad is going on */	
+		sz = strlen(s);
+		if (write(pipe_fds[1], s, sz) != sz)
+		{
+			free(s);
+			return -1;	
+		}
+		/* we're done, close write end */
+		close(pipe_fds[1]); 
 		free(s);
 
-		return len; 
+		if(waitpid(pid, &status, 0) == -1)
+			return -1;
+
+		if(WIFEXITED(status))
+		{
+			if(WEXITSTATUS(status) == -1)
+				return -1;
+		}
 	}
-
-	return 0;
-}
-
-int send_passcode(void)
-{
-	CURL *curl;
-	CURLcode res;
-	struct curl_slist *targets = NULL;
-	char *smtp;
-	
-	curl = curl_easy_init();
-	if (!curl) {
-		printf("Something bad happened to curl_easy_init()!");
-		return -1;
-	}
-
-#ifdef DEBUG
-	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
-#endif /* DEBUG */
-
-	smtp = (char *)malloc(strlen("smtp://") + strlen(conf[SMTP]) + 1);
-	if(!smtp)
-	{	
-		curl_easy_cleanup(curl);
-		return -1;
-	}
-
-	snprintf(smtp, strlen("smtp://") + strlen(conf[SMTP]) + 1,
-			"smtp://%s", conf[SMTP]);
-	curl_easy_setopt(curl, CURLOPT_URL, smtp);
-	targets = curl_slist_append(targets, conf[TO]);
-	curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, targets);
-	curl_easy_setopt(curl, CURLOPT_MAIL_FROM, conf[FROM]);
-	curl_easy_setopt(curl, CURLOPT_READFUNCTION, mailbody);
-	
-	res = curl_easy_perform(curl);
-	if(res != 0) 
+	else /* quand j'étais un petit enfant */ 
 	{
-		printf("Something bad happened!\n");
-		curl_easy_cleanup(curl);
-		return -1;
-	}
+		char *mail, *argv0;
+		
+		/* are there cooler ways to do this on new unices?
+                 * E.g., linux? FreeBSD? */
+		if(pipe_fds[0] != STDINFD)
+		{
+			if(dup2(pipe_fds[0], STDINFD) != STDINFD)
+				exit(-1);
+			close(pipe_fds[0]);
+		}
 
-	curl_slist_free_all(targets);
-	curl_easy_cleanup(curl);
+		mail = (char *)malloc(strlen(cfg_entry(cfg, MAIL))+1);
+		if(!mail)
+			exit(-1);
+		strcpy(mail, cfg_entry(cfg, MAIL));
+
+		if((argv0 = strrchr(mail, '/')) != NULL)
+			argv0++;
+		else
+			argv0 = mail;
+		
+		if(execl(mail, argv0, "-s", "", cfg_entry(cfg, TO), (char *)0) == -1)
+		{
+			exit(-1);
+		}
+
+		exit(0);
+	}
 
 	return 0;
 }
 
 #define INPUT_MAX 10
 /* Run after passcode is generated. Returns 1 on success, 0 on failure */
-int check_input(void)
+int check_input(unsigned int passcode)
 {
 	char input[INPUT_MAX];
 	unsigned int input_uint;
@@ -235,9 +242,11 @@ int main(int argc, char *argv[])
 	int tries;
 	char *shell;
 	trust_t *trust = NULL;
+	config_t *cfg;
+	unsigned int passcode;
 
-	conf = NULL;
-	if((conf = get_config()) == NULL)
+	cfg = NULL;
+	if((cfg = get_config()) == NULL)
 	{
 		perror("get_config");
 		printf("twostage seems unconfigured! dropping to shell.\n");
@@ -247,9 +256,10 @@ int main(int argc, char *argv[])
 	trust = get_trusty();
 	if(is_client_trusted(trust, get_client()) == 1)
 		goto drop_to_shell;
-	
+
 	printf("(twostage) Sending the passcode to your phone.\n");
-	if(send_passcode() != 0)
+	passcode = stupid_random();
+	if(send_passcode(cfg, passcode) != 0)
 	{
 		printf("Oh no! Badness! Try again or contact the admin...\n");
 		return -1;
@@ -258,7 +268,7 @@ int main(int argc, char *argv[])
 	printf("Passcode sent! Have patience, then enter it: ");
 	for(tries = 0 ; tries < TRIES_MAX ; tries++)
 	{
-		if(check_input())
+		if(check_input(passcode))
 			break;
 
 		if(TRIES_MAX - tries == 1)
@@ -283,8 +293,8 @@ drop_to_shell:
 	if(trust)
 		close_trust_store(trust);
 
-	if(conf && check_shell(conf[SHELL]))
-		shell = conf[SHELL];
+	if(cfg && check_shell(cfg[SHELL]))
+		shell = cfg[SHELL];
 	else
 		shell = DEFAULT_SHELL;
 

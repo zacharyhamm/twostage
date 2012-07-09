@@ -7,6 +7,13 @@
 
 #include "config.h"
 
+char *cfg_entry(config_t *cfg, int entry)
+{
+	if(entry >= CFG_SZ || entry < 0)
+		return NULL;
+	return cfg[entry];
+}
+
 char *read_cfg_line(FILE *cfg_fp)
 {
 	char *line = (char *)malloc(LEN);
@@ -59,7 +66,7 @@ char **get_config(void)
 
 	cfg_fp = fdopen(fd, "r");
 
-	/* The config file is just four simple lines. */
+	/* The config file is just three simple lines. */
 	/* We trust that you didn't fuck it up */
 	cfg = (char **) malloc(sizeof(char *) * CFG_SZ);
 	if(!cfg) return NULL;
@@ -77,9 +84,8 @@ char **get_config(void)
 	}
 
 #ifdef DEBUG
-	printf("%s\n", cfg[FROM]);
 	printf("%s\n", cfg[TO]);
-	printf("%s\n", cfg[SMTP]);
+	printf("%s\n", cfg[MAIL]);
 	printf("%s\n", cfg[SHELL]);
 #endif /* DEBUG */
 	

@@ -1,12 +1,13 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
+
+#define CFG_SZ 3
+
 /* cfg indices */
-#define FROM 0
-#define TO 1
-#define SMTP 2
-#define SHELL 3
-#define CFG_SZ 4
+#define TO 0
+#define MAIL 1
+#define SHELL 2
 
 #define CFG_DIR ".twostage"
 #define CFG_FN "twostage.cfg"
@@ -14,7 +15,10 @@
 
 #define LEN 1024
 
+typedef char * config_t;
+
 char *read_cfg_line(FILE *cfg_fp);
-char **get_config(void);
+config_t *get_config(void);
+char *cfg_entry(config_t *cfg, int entry);
 
 #endif /* _CONFIG_H_ */
