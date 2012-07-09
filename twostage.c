@@ -226,7 +226,6 @@ trust_t *get_trusty()
 
 		snprintf(path, TRTLN, "%s/%s/%s", getenv("HOME"), CFG_DIR,
 				TRUST_STORE);	
-		printf("%s\n", path);
 		return open_trust_store(path);
 }
 
@@ -272,7 +271,7 @@ int main(int argc, char *argv[])
 
 	if(we_should_trust())
 	{
-		if(trust_it(trust, get_client(), 60) == -1)
+		if(trust_it(trust, get_client(), 15*24*60*60) == -1)
 			perror("trust_it"); /* this is bad, but not fatal */
 	}
 
