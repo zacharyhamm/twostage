@@ -4,10 +4,7 @@
  * zsh@imipolexg.org 
  *
  * TODO: 
- *       * Option to remember trusted hosts for 30 days so you don't
- * 		have to do this over and over from your main boxen.
  *       * Add logging of failed passcode attempts. 
- * 	 * Does this break X11 forwarding? Must test. SCP?
  */
 
 #include <stdio.h>
