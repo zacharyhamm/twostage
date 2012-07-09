@@ -20,7 +20,6 @@
 #include "config.h"
 #include "trust.h"
 
-//#define MSG "From: %s\r\nTo: %s\r\n\r\nYour twostage passcode is %d\r\n"
 #define MSG "Your twostage passcode is %d\n"
 #define DEFAULT_SHELL "/bin/sh"
 
@@ -217,11 +216,11 @@ int we_should_trust(void)
 		return 0;
 
 	printf("\n\n");
-	printf("If you trust this host, you can store it for a period of time.\n");
+	printf("If you trust this host, you can store it for a few days.\n");
 	printf("Doing so will bypass this twostage authentication.\n");
 	printf("This also makes scp and other things possible.\n");
-	printf("If you don't trust this host but need scp, store it now, then\n");
-	printf("delete the host from ~/.twostage/trust/ as soon as you're done\n");
+	printf("If you don't trust this host but need scp, store it now,\n");
+	printf("Then delete the entry in~/.twostage/trust/ later\n");
 	printf("\nWould you like to trust %s for 15 days? [y/N] ", client);
 
 	if(fgets(input, INPUT_MAX, stdin) == NULL)
@@ -266,9 +265,12 @@ int main(int argc, char *argv[])
 
 	trust = get_trusty();
 	if(is_client_trusted(trust, get_client()) == 1)
+	{
+		printf("\n(twostage) Looks like we trust you. Cheers!\n");
 		goto drop_to_shell;
+	}
 
-	printf("(twostage) Sending the passcode to your phone.\n");
+	printf("\n(twostage) Sending the passcode to your phone.\n");
 	passcode = stupid_random();
 	if(send_passcode(cfg, passcode) != 0)
 	{
