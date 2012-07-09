@@ -33,8 +33,6 @@
 int executeur(char *shell, int argc, char **argv);
 unsigned int stupid_random(void);
 int send_passcode(config_t *cfg, unsigned int passcode);
-char *read_cfg_line(FILE *cfg_fp);
-char **get_config(void);
 int check_input(unsigned int passcode);
 
 /* crazy globals, trix are for kids */
@@ -128,7 +126,7 @@ int send_passcode(config_t *cfg, unsigned int passcode)
 		char *mail, *argv0;
 		
 		/* are there cooler ways to do this on new unices?
-                 * E.g., linux? FreeBSD? */
+         * E.g., linux? FreeBSD? */
 		if(pipe_fds[0] != STDINFD)
 		{
 			if(dup2(pipe_fds[0], STDINFD) != STDINFD)
