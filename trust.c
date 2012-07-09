@@ -96,7 +96,7 @@ char *get_client(void)
 int trust_it(trust_t *trust_store, char *client, int ttl_seconds)
 {
 	int fd;
-	char *path;
+	char *path, *cwd;
 	char ttl_s[512];
 	struct timespec tspec;
 
@@ -127,7 +127,7 @@ int trust_it(trust_t *trust_store, char *client, int ttl_seconds)
 
 	printf("path = %s\n", path);
 
-	if(trust_chdir(trust_store) == -1)
+	if((cwd = trust_chdir(trust_store)) == NULL)
 	{
 		free(path);
 		return -1;
@@ -136,11 +136,17 @@ int trust_it(trust_t *trust_store, char *client, int ttl_seconds)
 	/* Just "touch" it */	
 	if((fd = open(path, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR)) == -1) 
 	{
+		chdir(cwd);
 		free(path);
+		free(cwd);
 		return -1;
 	}
+
+
 	close(fd);
+	chdir(cwd);
 	free(path);
+	free(cwd);
 
 	return 0;
 }
@@ -148,8 +154,9 @@ int trust_it(trust_t *trust_store, char *client, int ttl_seconds)
 int is_client_trusted(trust_t *trust_store, char *client)
 {
 	struct dirent *dent;
+	char *cwd;
 
-	trust_chdir(trust_store);
+	cwd = trust_chdir(trust_store);
 
 	while((dent = readdir((DIR *)trust_store)) != NULL)
 	{
@@ -163,6 +170,7 @@ int is_client_trusted(trust_t *trust_store, char *client)
 		
 		if(strlen(s) != strlen(client))
 		{
+			chdir(cwd);
 			free(s);
 			continue;
 		}
@@ -177,12 +185,14 @@ int is_client_trusted(trust_t *trust_store, char *client)
 			if(!time_s)
 			{
 				free(s);
+				chdir(cwd);
 				return -1;
 			}
 
 			if(clock_gettime(CLOCK_REALTIME, &tspec) == -1)
 			{
 				free(s);
+				chdir(cwd);
 				return -1;
 			}
 
@@ -190,13 +200,17 @@ int is_client_trusted(trust_t *trust_store, char *client)
 			if(time_li > 0 && time_li > tspec.tv_sec)
 			{
 				free(s);
+				chdir(cwd);
 				return 1; 
 			}
 			else if(time_li > 0 && time_li <= tspec.tv_sec)
 			{
 				/* trust has expired */
 				if(unlink(dent->d_name) == -1)
+				{
+					chdir(cwd);
 					return -1;
+				}
 				
 				/* don't return 0 here (there might be another
  				 * trust entry for the same client */
@@ -204,21 +218,32 @@ int is_client_trusted(trust_t *trust_store, char *client)
 		}	
 		free(s);
 	}
+	chdir(cwd);
 		
 	return 0;	
 }
 
-int trust_chdir(trust_t *trust_store)
+char *trust_chdir(trust_t *trust_store)
 {
 	int fd;
+	char *cwd;
+
+	cwd = (char *)malloc(1024);
+	getcwd(cwd, 1024);
 
 	if((fd = dirfd((DIR *)trust_store)) == -1)
-		return -1;
+	{
+		free(cwd);
+		return NULL;
+	}
 
 	if(fchdir(fd) == -1)
-		return -1;
+	{
+		free(cwd);	
+		return NULL;
+	}
 
-	return 0;
+	return cwd;
 }
 
 /*

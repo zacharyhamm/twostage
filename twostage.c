@@ -28,17 +28,6 @@
 #define MSG "From: %s\r\nTo: %s\r\n\r\nYour two-stage passcode is %d\r\n"
 #define DEFAULT_SHELL "/bin/sh"
 
-/* cfg indices */
-#define FROM 0
-#define TO 1
-#define SMTP 2
-#define SHELL 3
-#define CFG_SZ 4
-
-#define CFG_DIR ".twostage"
-#define CFG_FN "twostage.cfg"
-#define CFG_ENTRIES 4
-
 #define TRUST_STORE "trust"
 
 #define LEN 1024
@@ -288,6 +277,7 @@ int main(int argc, char *argv[])
 	}
 
 drop_to_shell:
+
 
 	if(trust)
 		close_trust_store(trust);
