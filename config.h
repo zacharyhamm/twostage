@@ -1,7 +1,6 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-
 #define CFG_SZ 3
 
 /* cfg indices */
