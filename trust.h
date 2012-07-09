@@ -10,6 +10,6 @@ void close_trust_store(trust_t *trust_store);
 int trust_it(trust_t *trust_store, char *client, int ttl_seconds);
 int is_client_trusted(trust_t *trust_store, char *client);
 char *get_client(void);
-char *trust_chdir(trust_t *trust_store);
+int trust_chdir(trust_t *trust_store);
 
 #endif /* _TRUST_H_ */

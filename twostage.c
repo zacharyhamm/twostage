@@ -277,7 +277,8 @@ int main(int argc, char *argv[])
 	}
 
 drop_to_shell:
-
+	/* I suppose it's possible that this could fail... */
+	chdir(getenv("HOME"));
 
 	if(trust)
 		close_trust_store(trust);
