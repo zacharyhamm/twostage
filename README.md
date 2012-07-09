@@ -10,7 +10,6 @@ But it really does work, and it serves a pretty commendable purpose.
 
 Dependencies:
 
-* A recent version of `libcurl`
 * A library that provides `clock_gettime` (`-lrt` on a recent linux)
 
 Installation:
