@@ -74,9 +74,9 @@ unsigned int stupid_random(void)
 
 #define STDINFD fileno(stdin)
 
+/* ye ole' pipe-and-fork-and-exec */
 int send_passcode(config_t *cfg, unsigned int passcode)
 {
-	/* ye ole' pipe-and-fork-exec */
 	int pid;
 	int pipe_fds[2];
 
@@ -144,7 +144,8 @@ int send_passcode(config_t *cfg, unsigned int passcode)
 		else
 			argv0 = mail;
 		
-		if(execl(mail, argv0, "-s", "", cfg_entry(cfg, TO), (char *)0) == -1)
+		if(execl(mail, argv0, "-s", "\"\"", cfg_entry(cfg, TO), 
+			(char *)0) == -1)
 		{
 			exit(-1);
 		}

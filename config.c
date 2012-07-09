@@ -69,7 +69,8 @@ char **get_config(void)
 	/* The config file is just three simple lines. */
 	/* We trust that you didn't fuck it up */
 	cfg = (char **) malloc(sizeof(char *) * CFG_SZ);
-	if(!cfg) return NULL;
+	if(!cfg)
+		return NULL;
 
 	for(i = 0; i < CFG_SZ ; i++)
 	{
