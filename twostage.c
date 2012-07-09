@@ -204,6 +204,7 @@ int we_should_trust(void)
 		return 0;
 
 	printf("Would you like to trust %s for 15 days? [y/N] ", client);
+	printf("Don't do so if you don't trust the host!\nDoing so will make scp and other good things possible.\n");
 
 	if(fgets(input, INPUT_MAX, stdin) == NULL)
 		return 0;
