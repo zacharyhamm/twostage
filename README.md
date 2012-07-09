@@ -21,11 +21,10 @@ Installation:
 4. `mkdir ~/.twostage` for the account you'll be adding twstage auth
    to.
 5. Create a file in `.twostage` named `twostage.cfg`.
-6. This file should consist of three lines, one after another:
+6. This file should consist of three lines, one after another (see twostage.cfg.example):
     1. A TO line containing the email address for you SMS gateway.
     2. A MAIL line containing the path to your `mail` binary.
     3. A SHELL line containing the path to your preferred shell.
-(See twostage.cfg.example)
 7. Make `/bin/twostage` your default shell.
 8. And logout, log back in. 
 
