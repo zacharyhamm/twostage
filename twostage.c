@@ -15,7 +15,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <limits.h>
-#include <wait.h>
+#include <sys/wait.h>
 
 #include "config.h"
 #include "trust.h"
