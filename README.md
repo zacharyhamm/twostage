@@ -18,7 +18,7 @@ Installation
    to.
 5. Create a file in `.twostage` named `twostage.cfg`.
 6. This file should consist of three lines, one after another (See `twostage.cfg.example`):
-    1. A TO line containing the email address for you SMS gateway.
+    1. A TO line containing the email address for your SMS gateway (e.g, 5559995555@messaging.sprintpcs.com).
     2. A MAIL line containing the path to your `mail` binary.
     3. A SHELL line containing the path to your preferred shell.
 7. Make `/bin/twostage` your default shell.
