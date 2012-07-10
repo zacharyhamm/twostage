@@ -1,4 +1,4 @@
-# Edit this out for FreeBSD/OpenBSD/NetBSD/Darwin
+# Comment the line below out for FreeBSD/OpenBSD/NetBSD/Darwin
 #DEFINES=-D_BSD_
 DEFINES=
 LIBS=

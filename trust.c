@@ -118,8 +118,6 @@ int trust_it(trust_t *trust_store, char *client, int ttl_seconds)
         return -1;
     }
 
-    printf("path = %s\n", path);
-
     if(trust_chdir(trust_store) == -1)
     {
         free(path);
