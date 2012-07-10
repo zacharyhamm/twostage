@@ -20,9 +20,10 @@ char *cfg_entry(config_t *cfg, int entry)
  */
 ssize_t read_a_line(char **line, size_t *n, FILE *fp)
 {
-#ifdef _POSIX_C_SOURCE >= 200809L
+#if _POSIX_C_SOURCE >= 200809L
     return getline(line, n, fp);
-#elif _BSD_
+#else 
+#ifdef _BSD_
     char *buf, *lbuf;
     size_t len;
 
@@ -87,6 +88,7 @@ ssize_t read_a_line(char **line, size_t *n, FILE *fp)
         }
     }
 #endif /* _BSD_ */
+#endif /* _POSIX_C_SOURCE */
 }
 
 char *read_cfg_line(FILE *cfg_fp)
