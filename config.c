@@ -14,6 +14,81 @@ char *cfg_entry(config_t *cfg, int entry)
     return cfg[entry];
 }
 
+/* 
+ * Mostly duplicates getline() semantics across BSD and Linux
+ * Mostly, not entirely... 
+ */
+ssize_t read_a_line(char **line, size_t *n, FILE *fp)
+{
+#ifdef _POSIX_C_SOURCE >= 200809L
+    return getline(line, n, fp);
+#elif _BSD_
+    char *buf, *lbuf;
+    size_t len;
+
+    lbuf = NULL;
+    if((buf = fgetln(fp, &len)) == NULL)
+        return -1;
+
+    if(buf[len-1] == '\n')
+        buf[len-1] = 0;
+    else
+    {
+        if((lbuf = malloc(len+1)) == NULL)
+        {
+            free(buf);
+            return -1;
+        }
+
+        memcpy(lbuf, buf, len);
+        lbuf[len] = 0;
+        buf = lbuf;
+    }
+
+    if(*line == NULL)
+    {
+        if(lbuf)
+        {
+            *line = lbuf;
+            return (ssize_t)len;
+        }
+        else
+        {
+            *line = (char *)malloc(len);
+            if(*line == NULL)
+                return -1;
+            memcpy(*line, buf, len);
+            return (ssize_t)(len-1);
+        }
+    }
+    else
+    {
+        /* XXX we should realloc here, but in the meantime... */
+        if(len > *n)
+        {
+            if(lbuf)
+                free(lbuf);
+            return -1;
+        }
+
+        if(lbuf)
+        {
+            *line = lbuf;
+            return (ssize_t)(len-1);
+        }
+        else
+        {
+            if(*n > len)
+                memcpy(*line, buf, len);
+            else
+                memcpy(*line, buf, *n);
+
+            return (ssize_t)len;
+        }
+    }
+#endif /* _BSD_ */
+}
+
 char *read_cfg_line(FILE *cfg_fp)
 {
     char *line = (char *)malloc(LEN);
@@ -23,7 +98,7 @@ char *read_cfg_line(FILE *cfg_fp)
 
     sz = LEN;
 
-    if(getline(&line, &sz, cfg_fp) == -1)
+    if(read_a_line(&line, &sz, cfg_fp) == -1)
     {
         free(line);
         return NULL;

@@ -8,11 +8,8 @@ hacking on unix, or anything else, for that matter.
 
 But it really does work, and it serves a pretty commendable purpose.
 
-Dependencies:
-
-* A library that provides `clock_gettime` (`-lrt` on a recent linux)
-
-Installation:
+Installation
+------------
 
 1. `make`
 2. Copy `twostage` somewhere like `/bin/`.

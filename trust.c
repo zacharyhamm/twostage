@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <errno.h>
-#include <time.h>
+#include <sys/time.h>
 
 #include "trust.h"
 
@@ -93,18 +93,18 @@ int trust_it(trust_t *trust_store, char *client, int ttl_seconds)
     int fd;
     char *path;
     char ttl_s[512];
-    struct timespec tspec;
+    struct timeval tv;
 
     if(is_client_trusted(trust_store, client))
     {
         errno = EEXIST;
         return -1;
     }
-    
-    if(clock_gettime(CLOCK_REALTIME, &tspec) == -1)
-        return -1;
 
-    if(snprintf(ttl_s, 512, "%ld", ttl_seconds+tspec.tv_sec) < 0)
+    if(gettimeofday(&tv, NULL) == -1)
+        return -1;
+    
+    if(snprintf(ttl_s, 512, "%ld", ttl_seconds+tv.tv_sec) < 0)
         return -1;
 
     path = (char *)malloc(strlen(client)+strlen(ttl_s)+2);
@@ -164,7 +164,7 @@ int is_client_trusted(trust_t *trust_store, char *client)
 
         if(strcmp(s, client) == 0)
         {
-            struct timespec tspec;
+            struct timeval tv;
             char *time_s;
             long int time_li;
 
@@ -175,19 +175,19 @@ int is_client_trusted(trust_t *trust_store, char *client)
                 return -1;
             }
 
-            if(clock_gettime(CLOCK_REALTIME, &tspec) == -1)
+            if(gettimeofday(&tv, NULL) == -1)
             {
                 free(s);
                 return -1;
             }
 
             time_li = strtol(time_s, NULL, 10);
-            if(time_li > 0 && time_li > tspec.tv_sec)
+            if(time_li > 0 && time_li > tv.tv_sec)
             {
                 free(s);
                 return 1; 
             }
-            else if(time_li > 0 && time_li <= tspec.tv_sec)
+            else if(time_li > 0 && time_li <= tv.tv_sec)
             {
                 /* trust has expired */
                 if(unlink(dent->d_name) == -1)
@@ -196,7 +196,7 @@ int is_client_trusted(trust_t *trust_store, char *client)
                 }
                 
                 /* don't return 0 here (there might be another
-                 * trust entry for the same client */
+                 * trust entry for the same client) */
             }
         }   
         free(s);
