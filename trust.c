@@ -75,7 +75,7 @@ char *get_client(void)
     client_env = getenv("SSH_CLIENT");
     if(!client_env)
         return NULL;
-    client = (char *)malloc(strlen(client_env)+1);
+    client = malloc(strlen(client_env)+1);
     if(!client)
         return NULL;
     strcpy(client, client_env);
@@ -107,7 +107,7 @@ int trust_it(trust_t *trust_store, char *client, int ttl_seconds)
     if(snprintf(ttl_s, 512, "%ld", ttl_seconds+tv.tv_sec) < 0)
         return -1;
 
-    path = (char *)malloc(strlen(client)+strlen(ttl_s)+2);
+    path = malloc(strlen(client)+strlen(ttl_s)+2);
     if(!path)
         return -1;
     
@@ -146,7 +146,7 @@ int is_client_trusted(trust_t *trust_store, char *client)
 
     while((dent = readdir((DIR *)trust_store)) != NULL)
     {
-        char *s = (char *)malloc(strlen(dent->d_name)+1);
+        char *s = malloc(strlen(dent->d_name)+1);
         if(!s)
             return -1;  
     

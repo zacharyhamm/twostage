@@ -55,7 +55,7 @@ ssize_t read_a_line(char **line, size_t *n, FILE *fp)
         }
         else
         {
-            *line = (char *)malloc(len);
+            *line = malloc(len);
             if(*line == NULL)
                 return -1;
             memcpy(*line, buf, len);
@@ -93,7 +93,7 @@ ssize_t read_a_line(char **line, size_t *n, FILE *fp)
 
 char *read_cfg_line(FILE *cfg_fp)
 {
-    char *line = (char *)malloc(LEN);
+    char *line = malloc(LEN);
     size_t sz;
 
     if(!line) return NULL;
@@ -127,7 +127,7 @@ char **get_config(void)
     /* 2x +1 for / and +1 for \0 */
     cfg_path_sz = strlen(home)+1+strlen(CFG_DIR)+1+strlen(CFG_FN)+1;
 
-    cfg_path = (char *)malloc(cfg_path_sz);
+    cfg_path = malloc(cfg_path_sz);
     if(cfg_path == NULL)
         return NULL;
 
@@ -145,7 +145,7 @@ char **get_config(void)
 
     /* The config file is just three simple lines. */
     /* We trust that you didn't fuck it up */
-    cfg = (char **) malloc(sizeof(char *) * CFG_SZ);
+    cfg = malloc(sizeof(char *) * CFG_SZ);
     if(!cfg)
         return NULL;
 

@@ -35,7 +35,7 @@ int check_input(unsigned int passcode);
 /* crazy globals, trix are for kids */
 int executeur(char *shell, int argcount, char **argvee)
 {
-    char **args = (char **)malloc(sizeof(char *) * (argcount + 1));
+    char **args = malloc(sizeof(char *) * (argcount + 1));
     int i;
 
     args[0] = shell;
@@ -93,7 +93,7 @@ int send_passcode(config_t *cfg, unsigned int passcode)
             return -1; 
     
         /* -2, to erase %d, +7 for the passcode, +1 for \0 */   
-        s = (char *) malloc(strlen(MSG)-2+7+1);
+        s = malloc(strlen(MSG)-2+7+1);
         if(!s)
             return -1;
 
@@ -143,7 +143,7 @@ int send_passcode(config_t *cfg, unsigned int passcode)
                 exit(-1);
         }
 
-        mail = (char *)malloc(strlen(cfg_entry(cfg, MAIL))+1);
+        mail = malloc(strlen(cfg_entry(cfg, MAIL))+1);
         if(!mail)
             exit(-1);
         strcpy(mail, cfg_entry(cfg, MAIL));
@@ -238,7 +238,7 @@ trust_t *get_trusty()
 
 #define TRTLN strlen(getenv("HOME"))+1+strlen(CFG_DIR)+1+strlen(TRUST_STORE)+1
 
-        path = (char *)malloc(TRTLN);
+        path = malloc(TRTLN);
         if(!path)
             return NULL;
 
